@@ -10,3 +10,4 @@ node_modules/
 /playwright/.auth/
 trace/
 images/
+*.zip
