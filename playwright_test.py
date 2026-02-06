@@ -1,62 +1,80 @@
 import asyncio
-from tkinter.constants import PAGES
-from typing import Any
+from typing import Optional
+import re
+
 from playwright.async_api import async_playwright, Playwright, Page
 
-def debug_logs(text: str):
-    """Print debugging info"""
-    print(f"DEBUG: - {text}", flush=True)
+from playwright.async_api import (
+    Error,
+    TimeoutError,
+)
 
-async def hide_whatsapp_logo(page: Page) -> None:
-    """Remove the Whatsapp logo from the QR code"""
-    await page.evaluate('''
-        () = > {
-            const
-        logo = document.querySelector('div._akaz');
-        if (logo) logo.style.visibility = 'hidden';
-        }
-    ''')
+from play_class import Browser, Whatsapp, debug_logs
 
-async def get_screenshot(page: Page) -> None:
-    """Take a screenshot of the QR code"""
-    debug_logs("waiting for QR code...")
-    await page.wait_for_selector('canvas[aria-label*="QR"][role="img"]')
+# Patterns possibles
+PATTERNS = ["Search or start a new chat", "Nouvelle discussion", "new chat"]
 
-    debug_logs("QR code locator...")
-    qr_code = page.locator('canvas[aria-label*="QR"][role="img"]')
+# Créer un regex avec | (OR) à partir des patterns
+PATTERN_REGEX = re.compile("|".join(PATTERNS), re.IGNORECASE)
 
-    debug_logs("screenshot...")
-    await qr_code.screenshot(path="./images/qr.png")
+async def launch_browser(playwright: Playwright) -> Optional[Browser]:
+    try:
+        # launch firefox browser, initialise browser class
+        firefox = await playwright.firefox.launch()
+        b1 = Browser(firefox)
+        debug_logs("Firefox has been launched...")
+        return b1
+    except TimeoutError:
+        debug_logs("❌ Firefox launch timeout")
+        return None
+    except Error as e:
+        debug_logs(f"❌ Playwright error: {e}")
+        return None
+    except OSError as e:  # Firefox not found
+        debug_logs(f"❌ Firefox not found: {e}")
+        return None
+    except Exception as e:
+        debug_logs(f"Firefox has not been launched... {e}")
+        return None
+
+async def launch_whatsapp(firefox: Browser) -> Optional[Whatsapp]:
+    try:
+        # get whatsapp page and take the screenshot of the QR code
+        page = await firefox.browser_new_page()
+        if page:
+            whatsapp = Whatsapp(page, firefox)
+            await whatsapp.take_screenshot("./images/whatsapp.png")
+            firefox.print_responses()
+            return whatsapp
+
+    except TimeoutError:
+        debug_logs("❌ Screenshot timeout")
+    except Error as e:
+        debug_logs(f"❌ Playwright error: {e}")
 
 async def run_websocket(playwright: Playwright) -> None:
-    """Run the WebSocket server"""
-    firefox = await playwright.firefox.launch()
+    firefox = await launch_browser(playwright)
+    whatsapp = await launch_whatsapp(firefox)
+    try:
+        if whatsapp:
+            button = whatsapp.page.get_by_role("button", name=PATTERN_REGEX)
+            await button.wait_for()
 
-    # create a new incognito browser context
-    context = await firefox.new_context()
+            await (whatsapp.page.screenshot(path="./images/page.png"))
 
-    await context.tracing.start(screenshots=True, snapshots=True)
-
-    # create a new page inside context.
-    page = await context.new_page()
-
-    debug_logs("Goto Whatsapp web...")
-    await page.goto("https://web.whatsapp.com/")
-
-    debug_logs("get QR code screenshot...")
-    await get_screenshot(page)
-
-    debug_logs("stop tracing...")
-    await context.tracing.stop(path="tracing.zip")
-
-    # dispose context once it is no longer needed.
-    await context.close()
-    await firefox.close()
+    except TimeoutError:
+        debug_logs("❌ Firefox launch timeout")
+        await firefox.context.tracing.stop(path="tracing.zip")
+        await firefox.close_browser()
+    except Error as e:
+        debug_logs(f"❌ Playwright error: {e}")
+        debug_logs("stop tracing...")
+        await firefox.context.tracing.stop(path="tracing.zip")
+        await firefox.close_browser()
 
 async def main():
     async with async_playwright() as playwright:
         await run_websocket(playwright)
-
 
 asyncio.run(main())
 
