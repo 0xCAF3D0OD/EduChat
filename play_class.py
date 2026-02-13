@@ -8,12 +8,9 @@ from playwright.async_api import (
     Error,                 # 🔴 Erreur générale Playwright
 )
 
-def debug_logs(text: str):
-    """Print debugging info"""
-    print(f"DEBUG: - {text}", flush=True)
-
 class Browser:
     _instance: Optional['Browser'] = None
+    _whatsapp_instance: Optional['Browser'] = None
 
     def __init__(self, browser_type):
         self.browser = browser_type
@@ -28,13 +25,13 @@ class Browser:
                 debug_logs("Reuse of existing browser instance")
                 return True
         except Exception:
-            cls._instance = None
+            cls._instance = None # if browser has crashed
         return False
 
     @classmethod
     @handle_playwright_errors
     async def _create_new_browser_instance(cls, playwright: Playwright) -> Any:
-        # Utiliser l'instance passée en paramètre
+        # Use the instance passed as a parameter
         print(f"1 cls instance... equal to {cls._instance}")
 
         firefox = await playwright.firefox.launch()
@@ -47,13 +44,53 @@ class Browser:
     @classmethod
     async def get_or_create_browser_instance(cls, playwright: Playwright) -> Optional['Browser']:
         """Obtain or create a new browser instance"""
-        # Vérifier si une instance existe déjà
+        # Check if an instance already exists
         if await cls._check_if_existant_browser_instance():
             return cls._instance
         return await cls._create_new_browser_instance(playwright)
 
+    @classmethod
+    async def _check_if_existant_whatsapp_instance(cls) -> bool:
+        try:
+            print(f"cls instance... equal to {cls._instance}")
+            if cls._whatsapp_instance and cls._instance.browser.is_connected():
+                debug_logs("Reuse of existing whatsapp instance")
+                return True
+        except Exception:
+            cls._whatsapp_instance = None # if browser has crashed
+        return False
+
+    @classmethod
+    @handle_playwright_errors
+    async def _create_new_whatsapp_instance(cls) -> Any:
+        # Use the instance passed as a parameter
+        print(f"1 cls instance... equal to {cls._instance}")
+        await cls._instance.new_context()
+        page = await cls._instance.new_page()
+
+        # https://playwright.dev/python/docs/api/class-page#page-goto
+        await page.goto(
+            "https://web.whatsapp.com",
+            timeout=10000
+        )
+        cls._whatsapp_instance = page
+        return cls._whatsapp_instance
+
+    @classmethod
+    @handle_playwright_errors
+    async def get_or_create_whatsapp_page(cls) -> Any:
+        """
+         Initialize a new browser context (new tab) with tracing enabled and attach a response listener.
+
+         Returns a page navigated to WhatsApp Web (whatsapp login qrcode), or None if initialization fails.
+         The response listener remains active for the lifetime of the page.
+         """
+        if await cls._check_if_existant_whatsapp_instance():
+            return cls._whatsapp_instance
+        return await cls._create_new_whatsapp_instance()
+
     async def handle_response(self, response: Any) -> Any:
-        # Filtrer UNIQUEMENT les réponses importantes
+        # Filter ONLY important responses
         if "api" in response.url or "chat" in response.url or response.status >= 400:
             self.response.append({
                 "url": response.url,
@@ -85,24 +122,6 @@ class Browser:
         page.on("response", self.handle_response)
         return page
 
-    @handle_playwright_errors
-    async def init_whatsapp_page(self) -> Any:
-        """
-         Initialize a new browser context (new tab) with tracing enabled and attach a response listener.
-
-         Returns a page navigated to WhatsApp Web (whatsapp login qrcode), or None if initialization fails.
-         The response listener remains active for the lifetime of the page.
-         """
-        await self.new_context()
-        page = await self.new_page()
-
-        # https://playwright.dev/python/docs/api/class-page#page-goto
-        await page.goto(
-            "https://web.whatsapp.com",
-            timeout=10000
-        )
-        return page
-
     def get_responses(self):
         return self.response
 
@@ -120,9 +139,18 @@ class Browser:
 #end of Browser
 
 class Whatsapp:
+    _instance: Optional['Whatsapp'] = None
+
     def __init__(self, page: Any, browser_instance: Browser):
         self.page = page
         self.browser = browser_instance
+
+    @classmethod
+    async def get_or_create(cls, page: Any, firefox: Browser) -> Optional['Whatsapp']:
+        if cls._instance is not None:
+            return cls._instance
+        cls._instance = cls(page, firefox)
+        return cls._instance
 
     @handle_playwright_errors
     async def take_screenshot(self, path: str) -> Optional[str]:
