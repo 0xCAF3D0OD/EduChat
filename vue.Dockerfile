@@ -12,9 +12,6 @@ RUN npm install
 # copy project files and folders to the current working directory (i.e. 'app' folder)
 COPY ./frontend .
 
-# build app for production with minification
-RUN npm run dev
-
 EXPOSE 5173
 
-CMD [ "npm", "run", "dev" ]
+CMD [ "npm", "run", "dev", "--", "--host" ]
