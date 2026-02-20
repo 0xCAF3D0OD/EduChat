@@ -4,7 +4,7 @@ import re
 
 from playwright.async_api import async_playwright, Playwright, Page, WebSocketRoute
 from utils import debug_logs, handle_playwright_errors
-from play_class import Browser, Whatsapp
+from playwright.play_class import Browser, Whatsapp
 from playwright.async_api import (
     Error,
     TimeoutError,
@@ -21,11 +21,11 @@ PATTERN_REGEX = re.compile("|".join(PATTERNS), re.IGNORECASE)
 
 @handle_playwright_errors
 async def login_whatsapp_session(firefox: Browser, whatsapp: Whatsapp) -> None:
-    await whatsapp.take_screenshot("./images/whatsapp.png")
+    await whatsapp.take_screenshot("../images/whatsapp.png")
     firefox.print_responses()
     button = whatsapp.page.get_by_role("button", name=PATTERN_REGEX)
     await button.wait_for()
-    await (whatsapp.page.screenshot(path="./images/page.png"))
+    await (whatsapp.page.screenshot(path="../images/page.png"))
 
 @handle_playwright_errors
 async def launch_whatsapp(firefox: Browser) -> Optional[Whatsapp]:
@@ -47,7 +47,7 @@ async def launch_whatsapp(firefox: Browser) -> Optional[Whatsapp]:
 
             await button.wait_for()
 
-            await (whatsapp.page.screenshot(path="./images/page.png"))
+            await (whatsapp.page.screenshot(path="../images/page.png"))
             return whatsapp
         except TimeoutError:
             debug_logs(f"❌ Screenshot timeout - Attempt {attempt + 1}/{RETRY_COUNT}")
@@ -69,27 +69,27 @@ async def run_websocket(playwright: Playwright) -> None:
         if whatsapp:
             button = whatsapp.page.get_by_role("button", name=PATTERN_REGEX)
             await button.wait_for()
-            await (whatsapp.page.screenshot(path="./images/page.png"))
+            await (whatsapp.page.screenshot(path="../images/page.png"))
 
     except OSError as e:
         debug_logs(f"❌ Firefox not found: {e}")
         debug_logs("stop tracing...")
-        await firefox.context.tracing.stop(path="tracing.zip")
+        await firefox.context.tracing.stop(path="../traces/tracing.zip")
         await firefox.close_browser()
     except Exception as e:
         debug_logs(f"❌ Firefox has not been launched... {e}")
         debug_logs("stop tracing...")
-        await firefox.context.tracing.stop(path="tracing.zip")
+        await firefox.context.tracing.stop(path="../traces/tracing.zip")
         await firefox.close_browser()
     except TimeoutError:
         debug_logs("❌ Firefox launch timeout")
         debug_logs("stop tracing...")
-        await firefox.context.tracing.stop(path="tracing.zip")
+        await firefox.context.tracing.stop(path="../traces/tracing.zip")
         await firefox.close_browser()
     except Error as e:
         debug_logs(f"❌ Playwright error: {e}")
         debug_logs("stop tracing...")
-        await firefox.context.tracing.stop(path="tracing.zip")
+        await firefox.context.tracing.stop(path="../traces/tracing.zip")
         await firefox.close_browser()
 
 async def main():

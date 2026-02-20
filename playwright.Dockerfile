@@ -2,7 +2,7 @@ FROM python:3.12-bookworm
 
 WORKDIR /app
 
-COPY playwright_test.py .
+COPY playwright/playwright_test.py .
 
 RUN apt-get update && apt-get install -y xvfb
 

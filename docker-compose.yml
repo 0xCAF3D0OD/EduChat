@@ -1,0 +1,46 @@
+version: '3'
+
+services:
+
+  backend:
+    build:
+      context: .
+      dockerfile: fastapi.Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - "./backend:/code/app"
+
+  playwright:
+    build:
+      context: .
+      dockerfile: playwright.Dockerfile
+    volumes:
+      - "./playwright:/app"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: vue.Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - "./frontend:/app"
+      - "/app/node_modules"
+    depends_on:
+      - backend
+
+  redis:
+    image: "redis:alpine"
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: "postgres:alpine3.22"
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: whatsapp_bot
+    ports:
+      - "5432:5432"
