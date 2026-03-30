@@ -1,3 +1,12 @@
 [submodule "Frontend"]
 	path = Frontend
 	url = git@github.com:0xCAF3D0OD/EDU-Frontend.git
+[submodule "Backend"]
+	path = Backend
+	url = git@github.com:0xCAF3D0OD/EDU-Backend.git
+[submodule "Playwright"]
+	path = Playwright
+	url = git@github.com:0xCAF3D0OD/EDU-Playwright.git
+[submodule "Database"]
+	path = Database
+	url = git@github.com:0xCAF3D0OD/EDU-Database.git
