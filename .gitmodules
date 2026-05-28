@@ -12,4 +12,4 @@
 	url = git@github.com:0xCAF3D0OD/EDU-Database.git
 [submodule "Infrastructure"]
 	path = Infrastructure
-	url = git@github.com:0xCAF3D0OD/ansible-azure.git
+	url = git@github.com:0xCAF3D0OD/EDU-Infrastructure.git
